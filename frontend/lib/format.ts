@@ -22,3 +22,9 @@ export function fmtRange(start: string, end: string): string {
 export function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
+
+// Placeholder place photo: random mountain image, stable per seed via ?lock.
+// ponytail: external stand-in for real per-city photos; swap the URL when we have real ones.
+export function placeImage(seed: number | string, w = 640, h = 360): string {
+  return `https://loremflickr.com/${w}/${h}/mountain?lock=${seed}`;
+}

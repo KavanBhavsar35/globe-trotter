@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Pie, PieChart, Cell } from "recharts";
 import { Clock, Wallet } from "lucide-react";
 import type { Itinerary } from "@/lib/types";
-import { fmtRange, money } from "@/lib/format";
+import { fmtRange, money, placeImage } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -53,6 +54,15 @@ export function ItineraryDetail({ it }: { it: Itinerary }) {
         ) : (
           stops.map((stop, i) => (
             <Card key={stop.stop_id} className="gap-0 overflow-hidden py-0">
+              <div className="relative h-32 w-full">
+                <Image
+                  src={placeImage(stop.city.id)}
+                  alt={stop.city.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 640px"
+                  className="object-cover"
+                />
+              </div>
               <CardHeader className="flex-row items-start justify-between gap-3 border-b bg-muted/30 py-4">
                 <div className="flex items-start gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">

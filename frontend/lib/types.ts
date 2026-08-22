@@ -1,5 +1,17 @@
 // Shared API shapes. Mirror backend/main.py responses.
 
+export type Me = {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  city: string;
+  country: string;
+  bio: string;
+  photo_url: string; // presigned GET URL, "" if no photo
+};
+
 export type Trip = {
   id: number;
   name: string;

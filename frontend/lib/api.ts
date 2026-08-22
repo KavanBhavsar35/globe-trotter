@@ -45,3 +45,22 @@ export async function apiFetch<T = unknown>(path: string, opts: FetchOpts = {}):
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
+
+/** POST multipart/form-data (file upload). Browser sets the Content-Type + boundary. */
+export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  const t = getToken();
+  if (t) headers["Authorization"] = `Bearer ${t}`;
+  const res = await fetch(`${BASE}${path}`, { method: "POST", headers, body: form });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const j = await res.json();
+      if (typeof j?.detail === "string") detail = j.detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail || "Upload failed");
+  }
+  return res.json() as Promise<T>;
+}

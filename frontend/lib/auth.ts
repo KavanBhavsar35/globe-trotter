@@ -2,9 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, setSession, clearSession, getToken } from "@/lib/api";
+import { apiFetch, apiUpload, setSession, clearSession, getToken } from "@/lib/api";
 
 type AuthResp = { token: string; email: string };
+
+export type SignupProfile = {
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  city?: string;
+  country?: string;
+  bio?: string;
+};
 
 export async function login(email: string, password: string) {
   const r = await apiFetch<AuthResp>("/auth/login", {
@@ -15,10 +24,14 @@ export async function login(email: string, password: string) {
   setSession(r.token, r.email);
 }
 
-export async function signup(email: string, password: string) {
+export async function signup(
+  email: string,
+  password: string,
+  profile: SignupProfile = {}
+) {
   const r = await apiFetch<AuthResp>("/auth/signup", {
     method: "POST",
-    body: { email, password },
+    body: { email, password, ...profile },
     auth: false,
   });
   setSession(r.token, r.email);
@@ -41,6 +54,14 @@ export async function resetPassword(token: string, password: string) {
     body: { token, password },
     auth: false,
   });
+}
+
+/** Upload a profile photo (multipart). Returns the new presigned photo URL. */
+export async function uploadProfilePhoto(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const r = await apiUpload<{ photo_url: string }>("/auth/me/photo", form);
+  return r.photo_url;
 }
 
 /** Guard hook for pages under (app). Returns true once the token is validated. */
