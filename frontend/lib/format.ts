@@ -42,13 +42,27 @@ export function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-// Deterministic placeholder photo from Lorem Picsum, stable per seed.
-export function picsum(seed: number | string, w = 640, h = 360): string {
-  return `https://picsum.photos/seed/${seed}/${w}/${h}`;
+// Searchable placeholder photo from LoremFlickr, using search keywords.
+export function loremflickr(search: number | string, w = 640, h = 360): string {
+  if (typeof search === "number") {
+    return `https://loremflickr.com/${w}/${h}/travel`;
+  }
+  const tags = search
+    .toLowerCase()
+    .replace(/[^a-z0-9,\s]/g, "")
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .join(",");
+
+  return `https://loremflickr.com/${w}/${h}/${tags || "travel"}`;
 }
 
-// Prefer a stored image; fall back to a stable picsum placeholder.
-// ponytail: catalog img_url is blank for now — swap picsum for real photos when we have them.
-export function imageOr(url: string | undefined | null, seed: number | string, w = 640, h = 360): string {
-  return url ? url : picsum(seed, w, h);
+export function picsum(seed: number | string, w = 640, h = 360): string {
+  return loremflickr(seed, w, h);
+}
+
+// Prefer a stored image; fall back to a searchable loremflickr placeholder.
+export function imageOr(url: string | undefined | null, search: number | string, w = 640, h = 360): string {
+  return url ? url : loremflickr(search, w, h);
 }

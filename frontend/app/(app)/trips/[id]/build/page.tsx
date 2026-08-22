@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   Clock,
   ImagePlus,
   Trash2,
@@ -63,6 +65,24 @@ export default function BuildPage() {
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not remove.");
+    }
+  }
+
+  // Reorder stops via up/down (no drag-and-drop dep). Sends the full id order.
+  async function move(index: number, dir: -1 | 1) {
+    if (!it) return;
+    const ids = it.stops.map((s) => s.stop_id);
+    const j = index + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[index], ids[j]] = [ids[j], ids[index]];
+    try {
+      await apiFetch(`/trips/${tripId}/stops/reorder`, {
+        method: "POST",
+        body: { stop_ids: ids },
+      });
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reorder.");
     }
   }
 
@@ -212,6 +232,28 @@ export default function BuildPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <div className="flex flex-col">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Move stop earlier"
+                      className="size-5 text-muted-foreground hover:text-foreground"
+                      disabled={i === 0}
+                      onClick={() => move(i, -1)}
+                    >
+                      <ChevronUp />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Move stop later"
+                      className="size-5 text-muted-foreground hover:text-foreground"
+                      disabled={i === stops.length - 1}
+                      onClick={() => move(i, 1)}
+                    >
+                      <ChevronDown />
+                    </Button>
+                  </div>
                   <Badge variant="secondary">{money(stop.subtotal)}</Badge>
                   <Button
                     variant="ghost"

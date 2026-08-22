@@ -102,7 +102,7 @@ export function AddStopForm({
             >
               <div className="relative h-24 w-full">
                 <Image
-                  src={imageOr(c.img_url, `city-${c.id}`)}
+                  src={imageOr(c.img_url, `${c.name}, ${c.country}`)}
                   alt={c.name}
                   fill
                   sizes="(max-width: 640px) 100vw, 240px"

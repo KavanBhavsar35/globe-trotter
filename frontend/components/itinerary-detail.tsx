@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Pie, PieChart, Cell } from "recharts";
-import { CalendarDays, Clock, List, MapPin, Wallet } from "lucide-react";
+import { Pie, PieChart, Cell, Bar, BarChart, XAxis, CartesianGrid } from "recharts";
+import { CalendarDays, Clock, List, MapPin, TriangleAlert, Wallet } from "lucide-react";
 import type { Itinerary, ItineraryStop, StopActivity } from "@/lib/types";
 import { addDays, fmtDateLong, fmtRange, money, imageOr } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,8 @@ const CATS = [
 const chartConfig: ChartConfig = Object.fromEntries(
   CATS.map((c) => [c.key, { label: c.label, color: c.color }])
 );
+
+const barConfig: ChartConfig = { cost: { label: "Cost", color: "var(--chart-1)" } };
 
 /** Activity rows for a stop — shared by list + calendar views. */
 function ActivityList({ activities }: { activities: StopActivity[] }) {
@@ -89,7 +91,7 @@ function ListView({ stops }: { stops: ItineraryStop[] }) {
         <Card key={stop.stop_id} className="gap-0 overflow-hidden py-0">
           <div className="relative h-32 w-full">
             <Image
-              src={imageOr(stop.city.img_url, `city-${stop.city.id}`)}
+              src={imageOr(stop.city.img_url, `${stop.city.name}, ${stop.city.country}`)}
               alt={stop.city.name}
               fill
               sizes="(max-width: 768px) 100vw, 640px"
@@ -201,6 +203,19 @@ export function ItineraryDetail({ it }: { it: Itinerary }) {
     fill: c.color,
   })).filter((d) => d.value > 0);
 
+  // Per-destination totals for the bar chart.
+  const barData = stops.map((s) => ({ city: s.city.name, cost: s.subtotal }));
+
+  // Overbudget alert: flag stops whose daily rate runs well above the trip average.
+  // ponytail: heuristic (no user-set budget field) — flags daily > 1.4× the trip avg.
+  const OVER = 1.4;
+  const overDays =
+    budget.per_day_avg > 0
+      ? stops
+          .map((s) => ({ name: s.city.name, daily: Math.round(s.subtotal / s.nights) }))
+          .filter((s) => s.daily > budget.per_day_avg * OVER)
+      : [];
+
   return (
     <Tabs defaultValue="itinerary">
       <TabsList>
@@ -244,7 +259,21 @@ export function ItineraryDetail({ it }: { it: Itinerary }) {
       </TabsContent>
 
       {/* ---------- Budget ---------- */}
-      <TabsContent value="budget" className="mt-4">
+      <TabsContent value="budget" className="mt-4 space-y-4">
+        {overDays.length > 0 && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="font-medium">Over-budget days</p>
+              <p className="text-muted-foreground">
+                {overDays
+                  .map((d) => `${d.name} (${money(d.daily)}/day)`)
+                  .join(", ")}{" "}
+                — above the {money(budget.per_day_avg)}/day trip average.
+              </p>
+            </div>
+          </div>
+        )}
         <Card>
           <CardHeader className="flex-row flex-wrap items-center justify-between gap-4 border-b">
             <div className="inline-flex items-center gap-2">
@@ -322,6 +351,36 @@ export function ItineraryDetail({ it }: { it: Itinerary }) {
             )}
           </CardContent>
         </Card>
+
+        {budget.total > 0 && barData.length > 1 && (
+          <Card>
+            <CardHeader className="border-b">
+              <p className="font-semibold">Cost by destination</p>
+              <p className="text-xs text-muted-foreground">
+                Estimated total per stop.
+              </p>
+            </CardHeader>
+            <CardContent className="py-6">
+              <ChartContainer config={barConfig} className="h-56 w-full">
+                <BarChart data={barData} margin={{ left: 4, right: 4, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="city"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    interval={0}
+                    className="text-xs"
+                  />
+                  <ChartTooltip
+                    content={<ChartTooltipContent nameKey="cost" />}
+                  />
+                  <Bar dataKey="cost" fill="var(--color-cost)" radius={6} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
     </Tabs>
   );

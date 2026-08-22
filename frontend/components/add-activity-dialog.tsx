@@ -171,7 +171,7 @@ export function AddActivityDialog({
                 >
                   <div className="relative h-28 w-full">
                     <Image
-                      src={imageOr(a.img_url, `act-${a.id}`)}
+                      src={imageOr(a.img_url, `${a.name}, ${a.type}`)}
                       alt={a.name}
                       fill
                       sizes="(max-width: 640px) 100vw, 320px"

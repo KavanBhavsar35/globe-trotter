@@ -12,6 +12,9 @@ export function setSession(token: string, email: string) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(EMAIL_KEY, email);
 }
+export function setStoredEmail(email: string) {
+  localStorage.setItem(EMAIL_KEY, email); // keep localStorage in sync after an email change (token stays valid — JWT sub = user id)
+}
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);

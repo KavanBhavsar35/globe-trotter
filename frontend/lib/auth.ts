@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, apiUpload, setSession, clearSession, getToken } from "@/lib/api";
+import type { Me } from "@/lib/types";
 
 type AuthResp = { token: string; email: string };
 
@@ -62,6 +63,17 @@ export async function uploadProfilePhoto(file: File): Promise<string> {
   form.append("file", file);
   const r = await apiUpload<{ photo_url: string }>("/auth/me/photo", form);
   return r.photo_url;
+}
+
+/** Partial update of the current user's profile. Returns the fresh Me. */
+export async function updateProfile(patch: Partial<Me>): Promise<Me> {
+  return apiFetch<Me>("/auth/me", { method: "PATCH", body: patch });
+}
+
+/** Delete the account (cascades trips/stops server-side) and clear the local session. */
+export async function deleteAccount(): Promise<void> {
+  await apiFetch("/auth/me", { method: "DELETE" });
+  clearSession();
 }
 
 /** Guard hook for pages under (app). Returns true once the token is validated. */

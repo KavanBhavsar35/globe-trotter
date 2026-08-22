@@ -32,7 +32,7 @@ export type City = {
   country: string;
   cost_index: number;
   popularity: number; // 0–100 score
-  img_url: string; // "" → picsum fallback
+  img_url: string; // "" → loremflickr fallback
 };
 
 export type Activity = {
@@ -43,7 +43,16 @@ export type Activity = {
   cost: number;
   duration_hours: number;
   description: string;
-  img_url: string; // "" → picsum fallback
+  img_url: string; // "" → loremflickr fallback
+};
+
+// GET /auth/me/destinations — distinct cities from the user's trips (derived, not a favorites table)
+export type SavedDestination = {
+  id: number;
+  name: string;
+  country: string;
+  cost_index: number;
+  img_url: string;
 };
 
 export type StopActivity = {

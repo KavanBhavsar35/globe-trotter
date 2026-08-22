@@ -146,7 +146,7 @@ function DestinationCard({
       <Card className="gap-0 overflow-hidden py-0 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lg">
         <div className="relative h-32 w-full">
           <Image
-            src={imageOr(city.img_url, `city-${city.id}`)}
+            src={imageOr(city.img_url, `${city.name}, ${city.country}`)}
             alt={city.name}
             fill
             sizes="(max-width: 768px) 100vw, 320px"
