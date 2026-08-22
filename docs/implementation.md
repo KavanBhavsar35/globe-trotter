@@ -27,7 +27,7 @@ Solo build · localhost demo · 5-hour budget · MVP-safe. Each phase below is s
 Backend skeleton + frontend scaffold, wired end to end.
 
 - Backend: `db.py`, `models.py`, `auth.py` (argon2 + JWT), `seed_data.py` (15 cities, ~60 activities), `main.py` (all routes + startup seed). Syntax-checked.
-- Frontend: `create-next-app` (Next 16, TS, Tailwind v4, `src/`, `@/*`) + shadcn base-nova with: button, input, card, dialog, table, tabs, sonner, chart, badge, label, skeleton.
+- Frontend: `create-next-app` (Next 16, TS, Tailwind v4, ``, `@/*`) + shadcn base-nova with: button, input, card, dialog, table, tabs, sonner, chart, badge, label, skeleton.
 - Verified: `GET /health` + `/docs` live; `npm run dev` serves.
 
 ## P1 — Auth + app shell ✅
@@ -37,13 +37,13 @@ Goal: sign up / log in, guarded app area, nav with logout. Screens #1, #12(trimm
 Backend (already built in P0): `POST /auth/signup`, `POST /auth/login` → `{token,email}`; `GET /auth/me`; `current_user` dependency.
 
 Frontend:
-- `src/lib/api.ts` — `apiFetch` wrapper + token/email localStorage helpers.
-- `src/lib/auth.ts` — `login`, `signup`, `useRequireAuth` guard hook.
-- `src/app/login/page.tsx` — tabbed Log in / Sign up card, inline validation, toasts.
-- `src/app/(app)/layout.tsx` — auth guard + shell.
-- `src/components/site-nav.tsx` — brand, Dashboard/My Trips links, email, Logout.
-- `src/app/(app)/dashboard/page.tsx` — welcome placeholder (P2 fills it).
-- `src/app/page.tsx` — redirect to `/dashboard` or `/login`.
+- `lib/api.ts` — `apiFetch` wrapper + token/email localStorage helpers.
+- `lib/auth.ts` — `login`, `signup`, `useRequireAuth` guard hook.
+- `app/login/page.tsx` — tabbed Log in / Sign up card, inline validation, toasts.
+- `app/(app)/layout.tsx` — auth guard + shell.
+- `components/site-nav.tsx` — brand, Dashboard/My Trips links, email, Logout.
+- `app/(app)/dashboard/page.tsx` — welcome placeholder (P2 fills it).
+- `app/page.tsx` — redirect to `/dashboard` or `/login`.
 - Root layout: `<Toaster/>`, title.
 
 Verify: signup → redirected into app; refresh keeps session; bad login shows toast; logout returns to `/login`; hitting `/dashboard` logged-out redirects to `/login`.
@@ -55,9 +55,9 @@ Goal: create, list, delete trips. Screens #2, #3, #4.
 Backend (built): `GET /trips` (with `stop_count`), `POST /trips`, `DELETE /trips/{id}`.
 
 Frontend:
-- `src/lib/types.ts` — shared TS types (Trip, City, Activity, Itinerary).
+- `lib/types.ts` — shared TS types (Trip, City, Activity, Itinerary).
 - Dashboard = recent trips + "Plan New Trip" (Create Trip dialog: name, start/end date, description) + link to full list.
-- `src/app/(app)/trips/page.tsx` — trip cards (name, date range, stop count, View / Delete).
+- `app/(app)/trips/page.tsx` — trip cards (name, date range, stop count, View / Delete).
 - Empty state + toasts. Date validation (end ≥ start).
 
 Verify: create trip appears in list; delete removes it; counts correct.
@@ -68,7 +68,7 @@ Goal: add city stops with dates, attach activities. Screens #5, #7, #8.
 
 Backend (built): `GET /cities?q=`, `GET /cities/{id}/activities`, `POST /trips/{id}/stops`, `DELETE /stops/{id}`, `POST /stops/{id}/activities`, `DELETE /stop-activities/{id}`.
 
-Frontend `src/app/(app)/trips/[id]/build/page.tsx`:
+Frontend `app/(app)/trips/[id]/build/page.tsx`:
 - City search (debounced `q`) → results with country + cost index → "Add stop" (pick start/end date via native inputs).
 - Per stop: list attached activities; "Add activity" opens the city's catalog (filter by type/cost), add/remove.
 - Reorder: keep insertion order (drag-reorder cut). Live running subtotal per stop.
@@ -81,7 +81,7 @@ Goal: read-only structured plan + cost breakdown. Screens #6, #9.
 
 Backend (built): `GET /trips/{id}/itinerary` → `{trip, stops[{city,dates,nights,activities,subtotal}], budget{total,categories,per_day_avg}}`.
 
-Frontend `src/app/(app)/trips/[id]/page.tsx`:
+Frontend `app/(app)/trips/[id]/page.tsx`:
 - Day/city-grouped layout: city headers, activity blocks (name, type badge, cost, duration).
 - Budget card: Recharts pie by category (stay/meals/transport/activities) + total + per-day average. Overbudget hint if per-day avg > threshold.
 - Tabs: "Itinerary" / "Budget". Buttons: Edit (→ builder), Share.
@@ -96,7 +96,7 @@ Backend (built): `POST /trips/{id}/share` → `{share_token}`; `GET /public/{tok
 
 Frontend:
 - Share button → calls share, shows public URL, "Copy link" (`navigator.clipboard`).
-- `src/app/trip/[token]/page.tsx` — public, unguarded, read-only itinerary + budget; "Copy Trip" CTA routes to signup.
+- `app/trip/[token]/page.tsx` — public, unguarded, read-only itinerary + budget; "Copy Trip" CTA routes to signup.
 
 Verify: open share URL in a logged-out/incognito window → itinerary shows; private trips 404.
 
