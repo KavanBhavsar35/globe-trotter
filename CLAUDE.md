@@ -6,7 +6,7 @@ Multi-city travel planner (hackathon, Odoo problem statement). Users create trip
 
 ## Stack
 
-- **Backend**: FastAPI + SQLModel + **SQLite** (`backend/globetrotter.db`, auto-created). Auth = **argon2** (passlib) password hash + **JWT** (PyJWT). No Alembic — tables via `create_all` on startup; catalog seeded on first boot.
+- **Backend**: FastAPI + SQLModel + **SQLite** (`backend/globetrotter.db`, auto-created). Auth = **argon2** (passlib) password hash + **JWT** (PyJWT). No Alembic — tables via `create_all` on startup; catalog seeded on first boot. Catalog scope = **Japan, UK, India** only; reseed with `python backend/seed.py` (wipes catalog + dependent stops).
 - **Frontend**: Next.js **16** (App Router, ``) + React **19** + Tailwind **v4** + shadcn **"base-vega"** components.
   - shadcn base-vega is built on **Base UI** (`@base-ui/react`), **not Radix**. Controlled props are `open`/`onOpenChange` (Dialog) and `value`/`onValueChange` (Tabs). Some components use a `render={<El/>}` prop instead of Radix `asChild`.
   - Charts: **Recharts 3** via `components/ui/chart`. Icons: **lucide-react**.
@@ -30,6 +30,9 @@ Registries are firewalled inside the agent sandbox — **installs must be run by
 - Auth: JWT + email in `localStorage` (`gt_token`, `gt_email`). All requests go through `lib/api.ts:apiFetch`; auth flows in `lib/auth.ts`. **localhost-demo only** — not XSS-safe for production.
 - Routes: `/login` (public), everything under `app/(app)/*` is guarded by `useRequireAuth`, `/trip/[token]` is the public share view.
 - Dates: native `<input type="date">` — no date-picker library.
+- Catalog is **country-scoped**: a trip picks ONE `country` at creation (dropdown, from `GET /countries`). Builder lists only that country's cities via `GET /cities?country=X` in an inline `<select>` (no popup). `/cities` still accepts `q`.
+- Toasts (sonner) at **top-left**; confirms go through `lib/confirm.ts:confirmToast` (never `window.confirm`/`alert`).
+- **Theme** (modern-bright): indigo-violet `--primary`; bright multi-hue `--chart-1..5` for the budget pie; headings **Space Grotesk** (`--font-heading`), body **Inter**. Dark mode via `next-themes` — toggle in nav (`components/theme-toggle.tsx`) or `d` key. Tokens in `app/globals.css`. **Icons = `lucide-react`, never emojis.**
 - Budget is a **naive heuristic** (flat meals $30/night, transport $100/stop, stay = city cost index × nights), computed on read in `backend/main.py:build_itinerary`. Tune only if asked.
 
 ## Scope status

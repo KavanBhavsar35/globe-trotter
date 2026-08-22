@@ -22,13 +22,26 @@ Solo build · localhost demo · 5-hour budget · MVP-safe. Each phase below is s
 
 ---
 
+## Design system
+
+Modern-bright travel look. Tokens live in `app/globals.css`; fonts in `app/layout.tsx`.
+
+- **Primary**: vivid indigo-violet — `oklch(0.55 0.23 275)` light, `oklch(0.62 0.24 278)` dark. `--ring` matches it.
+- **Charts** (budget pie, both themes): indigo / cyan / amber / rose / green — `--chart-1..5`.
+- **Fonts**: headings **Space Grotesk** via `--font-display` → `--font-heading` (base-vega titles + `h1/h2/h3` pick it up automatically); body **Inter** (`--font-sans`); mono Geist Mono.
+- **Dark mode**: `next-themes` (class strategy). Toggle = `components/theme-toggle.tsx` (Sun/Moon) in the nav; `d` key also toggles.
+- **Icons**: `lucide-react` everywhere — **no emojis**.
+- Trip cards get a gradient accent bar (`from-primary to-chart-2`); dashboard hero is a primary→cyan gradient.
+
+---
+
 ## P0 — Setup ✅
 
 Backend skeleton + frontend scaffold, wired end to end.
 
 - Backend: `db.py`, `models.py`, `auth.py` (argon2 + JWT), `seed_data.py` (15 cities, ~60 activities), `main.py` (all routes + startup seed). Syntax-checked.
-- Frontend: `create-next-app` (Next 16, TS, Tailwind v4, ``, `@/*`) + shadcn base-nova with: button, input, card, dialog, table, tabs, sonner, chart, badge, label, skeleton.
-- Verified: `GET /health` + `/docs` live; `npm run dev` serves.
+- Frontend: `create-next-app` (Next 16, TS, Tailwind v4, ``, `@/*`) + shadcn base-vega with: button, input, card, dialog, table, tabs, sonner, chart, badge, label, skeleton.
+- Verified: `GET /health` + `/docs` live; `pnpm dev` serves.
 
 ## P1 — Auth + app shell ✅
 
@@ -48,45 +61,49 @@ Frontend:
 
 Verify: signup → redirected into app; refresh keeps session; bad login shows toast; logout returns to `/login`; hitting `/dashboard` logged-out redirects to `/login`.
 
-## P2 — Trips + Dashboard/My Trips ⬜
+## P2 — Trips + Dashboard/My Trips ✅
 
 Goal: create, list, delete trips. Screens #2, #3, #4.
 
 Backend (built): `GET /trips` (with `stop_count`), `POST /trips`, `DELETE /trips/{id}`.
 
 Frontend:
-- `lib/types.ts` — shared TS types (Trip, City, Activity, Itinerary).
-- Dashboard = recent trips + "Plan New Trip" (Create Trip dialog: name, start/end date, description) + link to full list.
-- `app/(app)/trips/page.tsx` — trip cards (name, date range, stop count, View / Delete).
-- Empty state + toasts. Date validation (end ≥ start).
+- `lib/types.ts` — shared TS types (Trip, City, Activity, Itinerary). `lib/format.ts` — date/money helpers. `lib/use-trips.ts` — shared fetch + `reload()`.
+- `components/create-trip-dialog.tsx` — Base UI Dialog: name, **country** (`<select>` from `GET /countries`), start/end date (native), description; validates end ≥ start; toasts; `onCreated` reloads.
+- `components/trip-card.tsx` — gradient card: name, date range, stop-count badge, delete (confirm + `DELETE /trips/{id}`), links to `/trips/[id]`.
+- `app/(app)/dashboard/page.tsx` — hero + recent 3 trips + empty state.
+- `app/(app)/trips/page.tsx` — full grid + client-side search + empty state.
 
-Verify: create trip appears in list; delete removes it; counts correct.
+Verify: create trip appears in list; delete removes it; counts correct. `tsc --noEmit` clean.
 
-## P3 — Cities/Activities + Itinerary Builder ⬜ (biggest — protect time)
+## P3 — Cities/Activities + Itinerary Builder ✅
 
 Goal: add city stops with dates, attach activities. Screens #5, #7, #8.
 
 Backend (built): `GET /cities?q=`, `GET /cities/{id}/activities`, `POST /trips/{id}/stops`, `DELETE /stops/{id}`, `POST /stops/{id}/activities`, `DELETE /stop-activities/{id}`.
 
-Frontend `app/(app)/trips/[id]/build/page.tsx`:
-- City search (debounced `q`) → results with country + cost index → "Add stop" (pick start/end date via native inputs).
-- Per stop: list attached activities; "Add activity" opens the city's catalog (filter by type/cost), add/remove.
-- Reorder: keep insertion order (drag-reorder cut). Live running subtotal per stop.
+Frontend (all read off `GET /trips/{id}/itinerary`, reload after each mutation):
+- `app/(app)/trips/[id]/build/page.tsx` — header (name, dates, live total, Add-city) + numbered stop cards (city, date range, nights, subtotal, activities w/ remove, delete-stop).
+- `components/add-stop-form.tsx` — **inline** bar (no popup): city `<select>` scoped to the trip's country (`GET /cities?country=X`) + arrive/leave dates → `POST /stops`.
+- `components/add-activity-dialog.tsx` — per-stop `GET /cities/{id}/activities`; add (dedup via `existingIds`) / stays open for multiple.
+- Trip cards link to the **itinerary view** (`/trips/[id]`); the view's **Edit itinerary** button opens the builder (`/trips/[id]/build`).
+- Confirms via `lib/confirm.ts:confirmToast` (toast with Confirm/Cancel); toasts pinned top-left.
 
-Verify: search filters; adding a stop persists; activities add/remove; reload restores state.
+Verify: search filters; adding a stop persists; activities add/remove; reload restores state. `tsc --noEmit` clean.
 
-## P4 — Itinerary View + Budget ⬜
+## P4 — Itinerary View + Budget ✅
 
 Goal: read-only structured plan + cost breakdown. Screens #6, #9.
 
 Backend (built): `GET /trips/{id}/itinerary` → `{trip, stops[{city,dates,nights,activities,subtotal}], budget{total,categories,per_day_avg}}`.
 
 Frontend `app/(app)/trips/[id]/page.tsx`:
-- Day/city-grouped layout: city headers, activity blocks (name, type badge, cost, duration).
-- Budget card: Recharts pie by category (stay/meals/transport/activities) + total + per-day average. Overbudget hint if per-day avg > threshold.
-- Tabs: "Itinerary" / "Budget". Buttons: Edit (→ builder), Share.
+- Stop-grouped read-only layout: numbered city headers (name, country, date range, nights, subtotal), activity rows (name, type badge, cost, duration). Empty → "Start building" link.
+- Budget tab: Recharts donut `Pie` by category (stay/meals/transport/activities, `--chart-1..4`) + total + per-day average + swatch/%-of-total breakdown list.
+- Tabs: "Itinerary" / "Budget". Button: **Edit itinerary** (→ builder). Share deferred to P5.
+- Builder back-link now points to the trip overview (`/trips/[id]`).
 
-Verify: totals equal sum of stop subtotals; pie renders; matches builder data.
+Verify: `tsc --noEmit` clean. Totals equal sum of stop subtotals; pie renders; matches builder data.
 
 ## P5 — Public share ⬜
 
