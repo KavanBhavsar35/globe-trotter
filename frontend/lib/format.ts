@@ -39,7 +39,7 @@ export function fmtRange(start: string, end: string): string {
 }
 
 export function money(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
+  return `₹${Math.round(n).toLocaleString('en-IN')}`;
 }
 
 // Searchable placeholder photo from LoremFlickr, using search keywords.
