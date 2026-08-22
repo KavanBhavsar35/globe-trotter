@@ -72,6 +72,10 @@ class ActivityIn(BaseModel):
     activity_id: int
 
 
+class ReorderIn(BaseModel):
+    stop_ids: list[int]  # full set of the trip's stop ids, in the desired order
+
+
 class ForgotIn(BaseModel):
     email: str
 
@@ -79,6 +83,17 @@ class ForgotIn(BaseModel):
 class ResetIn(BaseModel):
     token: str
     password: str
+
+
+class ProfileUpdate(BaseModel):
+    # all optional — partial update; only provided fields change
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    bio: Optional[str] = None
 
 
 # ---------- helpers ----------
@@ -150,6 +165,20 @@ def _cover_url(trip: Trip) -> str:
     return storage.generate_presigned_download_url(trip.cover_key)
 
 
+def _me_dict(user: User) -> dict:
+    return {
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "phone": user.phone,
+        "city": user.city,
+        "country": user.country,
+        "bio": user.bio,
+        "photo_url": _photo_url(user),
+    }
+
+
 # ---------- auth ----------
 @app.get("/health")
 def health():
@@ -178,17 +207,65 @@ def login(body: Credentials, session: Session = Depends(get_session)):
 
 @app.get("/auth/me")
 def me(user: User = Depends(current_user)):
-    return {
-        "id": user.id,
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "phone": user.phone,
-        "city": user.city,
-        "country": user.country,
-        "bio": user.bio,
-        "photo_url": _photo_url(user),
-    }
+    return _me_dict(user)
+
+
+@app.patch("/auth/me")
+def update_me(body: ProfileUpdate, user: User = Depends(current_user), session: Session = Depends(get_session)):
+    data = body.model_dump(exclude_unset=True)
+    if "email" in data:
+        new_email = (data["email"] or "").strip()
+        if "@" not in new_email:
+            raise HTTPException(400, "Enter a valid email")
+        if new_email != user.email and session.exec(select(User).where(User.email == new_email)).first():
+            raise HTTPException(400, "Email already registered")
+        data["email"] = new_email
+    for k, v in data.items():
+        setattr(user, k, v)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return _me_dict(user)
+
+
+@app.delete("/auth/me")
+def delete_me(user: User = Depends(current_user), session: Session = Depends(get_session)):
+    # cascade by hand — no FK cascade configured. trips → stops → links, then blobs, then user.
+    for trip in session.exec(select(Trip).where(Trip.user_id == user.id)).all():
+        for st in session.exec(select(Stop).where(Stop.trip_id == trip.id)).all():
+            for link in session.exec(select(StopActivity).where(StopActivity.stop_id == st.id)).all():
+                session.delete(link)
+            session.delete(st)
+        if trip.cover_key:
+            try:
+                storage.delete_file(trip.cover_key)
+            except (BotoCoreError, ClientError):
+                pass  # best-effort blob delete
+        session.delete(trip)
+    for pr in session.exec(select(PasswordReset).where(PasswordReset.user_id == user.id)).all():
+        session.delete(pr)
+    if user.photo_key:
+        try:
+            storage.delete_file(user.photo_key)
+        except (BotoCoreError, ClientError):
+            pass
+    session.delete(user)
+    session.commit()
+    return {"ok": True}
+
+
+@app.get("/auth/me/destinations")
+def my_destinations(user: User = Depends(current_user), session: Session = Depends(get_session)):
+    # "saved destinations" = distinct cities across the user's trips (derived; no favorites table)
+    trip_ids = [t.id for t in session.exec(select(Trip).where(Trip.user_id == user.id)).all()]
+    if not trip_ids:
+        return []
+    city_ids = {st.city_id for st in session.exec(select(Stop).where(Stop.trip_id.in_(trip_ids))).all()}
+    cities = (session.get(City, cid) for cid in city_ids)
+    return [
+        {"id": c.id, "name": c.name, "country": c.country, "cost_index": c.cost_index, "img_url": c.img_url}
+        for c in cities if c
+    ]
 
 
 @app.post("/auth/me/photo")
@@ -368,6 +445,19 @@ def add_stop(trip_id: int, body: StopIn, user: User = Depends(current_user), ses
     session.commit()
     session.refresh(stop)
     return stop
+
+
+@app.post("/trips/{trip_id}/stops/reorder")
+def reorder_stops(trip_id: int, body: ReorderIn, user: User = Depends(current_user), session: Session = Depends(get_session)):
+    trip = owned_trip(trip_id, session, user)
+    by_id = {s.id: s for s in session.exec(select(Stop).where(Stop.trip_id == trip.id)).all()}
+    if set(body.stop_ids) != set(by_id):
+        raise HTTPException(400, "stop_ids must be exactly this trip's stops")
+    for idx, sid in enumerate(body.stop_ids):
+        by_id[sid].order = idx
+        session.add(by_id[sid])
+    session.commit()
+    return {"ok": True}
 
 
 @app.delete("/stops/{stop_id}")

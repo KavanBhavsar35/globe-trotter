@@ -1,7 +1,7 @@
 # Seed catalog: cities + their activities, grouped by country.
 # (city_name, country, cost_index_usd_per_night, popularity_0_100, [ (activity, type, cost, hours, description) ... ])
 # Scope: Japan, UK, India only — users pick a country, then its cities.
-# img_url is left blank on both city + activity → client falls back to picsum.
+# img_url is left blank on both city + activity → client falls back to loremflickr.
 
 from sqlmodel import select
 

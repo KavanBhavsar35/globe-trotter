@@ -43,7 +43,7 @@ class City(SQLModel, table=True):
     country: str
     cost_index: int  # rough daily stay cost in USD
     popularity: int = 0  # 0–100 score, drives "popular" sort/badge in city search
-    img_url: str = ""  # optional real photo; blank → picsum fallback on the client
+    img_url: str = ""  # optional real photo; blank → loremflickr fallback on the client
 
 
 class Activity(SQLModel, table=True):
@@ -54,7 +54,7 @@ class Activity(SQLModel, table=True):
     cost: int
     duration_hours: int
     description: str = ""  # short blurb for the activity search quick-view
-    img_url: str = ""  # optional real photo; blank → picsum fallback on the client
+    img_url: str = ""  # optional real photo; blank → loremflickr fallback on the client
 
 
 class Stop(SQLModel, table=True):
