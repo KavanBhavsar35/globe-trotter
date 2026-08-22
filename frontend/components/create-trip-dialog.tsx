@@ -38,6 +38,7 @@ export function CreateTripDialog({
   const [start, setStart] = React.useState("");
   const [end, setEnd] = React.useState("");
   const [desc, setDesc] = React.useState("");
+  const [isPublic, setIsPublic] = React.useState(false);
   const [cover, setCover] = React.useState<File | null>(null);
   const [coverPreview, setCoverPreview] = React.useState("");
 
@@ -61,6 +62,7 @@ export function CreateTripDialog({
     setStart("");
     setEnd("");
     setDesc("");
+    setIsPublic(false);
     setCover(null);
   }
 
@@ -80,6 +82,7 @@ export function CreateTripDialog({
           start_date: start,
           end_date: end,
           description: desc.trim(),
+          is_public: isPublic,
         },
       });
       if (cover) {
@@ -218,6 +221,20 @@ export function CreateTripDialog({
               </label>
             )}
           </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm hover:bg-muted/50">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>
+              <span className="font-medium">Share to Community</span>
+              <span className="block text-xs text-muted-foreground">
+                Make this trip public so other travellers can discover it. You can change this later.
+              </span>
+            </span>
+          </label>
           <DialogFooter>
             <Button type="submit" disabled={saving}>
               {saving ? "Creating…" : "Create trip"}

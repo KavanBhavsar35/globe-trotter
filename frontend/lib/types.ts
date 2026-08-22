@@ -26,6 +26,9 @@ export type Trip = {
   cover_url?: string; // presigned GET URL, "" if no cover
 };
 
+// GET /community — a public trip plus its owner label (from other users' feeds)
+export type CommunityTrip = Trip & { owner: string };
+
 export type City = {
   id: number;
   name: string;

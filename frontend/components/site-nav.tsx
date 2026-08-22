@@ -22,6 +22,7 @@ export function SiteNav() {
   const navLinks = [
     { href: "/dashboard", label: "Discover" },
     { href: "/trips", label: "My Trips" },
+    { href: "/community", label: "Community" },
   ];
 
   return (

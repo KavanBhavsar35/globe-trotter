@@ -60,6 +60,7 @@ class TripIn(BaseModel):
     start_date: date
     end_date: date
     description: str = ""
+    is_public: bool = False  # share to the community feed at creation (default private)
 
 
 class StopIn(BaseModel):
@@ -354,6 +355,8 @@ def list_trips(user: User = Depends(current_user), session: Session = Depends(ge
 @app.post("/trips")
 def create_trip(body: TripIn, user: User = Depends(current_user), session: Session = Depends(get_session)):
     trip = Trip(user_id=user.id, **body.model_dump())
+    if trip.is_public:
+        trip.share_token = secrets.token_urlsafe(8)  # needed for the public view + community link
     session.add(trip)
     session.commit()
     session.refresh(trip)
@@ -522,6 +525,39 @@ def city_activities(city_id: int, session: Session = Depends(get_session)):
 
 
 # ---------- public read-only ----------
+@app.get("/community")
+def community(q: str = "", country: str = "", sort: str = "recent", session: Session = Depends(get_session)):
+    # Public trips others can browse. Search by name/country/description; sort recent|budget|name.
+    stmt = select(Trip).where(Trip.is_public == True, Trip.share_token != None)  # noqa: E711
+    if country:
+        stmt = stmt.where(Trip.country == country)
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where(Trip.name.ilike(like) | Trip.country.ilike(like) | Trip.description.ilike(like))
+    out = []
+    for t in session.exec(stmt).all():
+        it = build_itinerary(t, session)  # reuse for stop count + budget total
+        owner = session.get(User, t.user_id)
+        if owner:
+            owner_name = " ".join(filter(None, [owner.first_name, owner.last_name])) or owner.email.split("@")[0]
+        else:
+            owner_name = "Traveller"
+        out.append({
+            **t.model_dump(),
+            "owner": owner_name,
+            "stop_count": len(it["stops"]),
+            "budget_total": it["budget"]["total"],
+            "cover_url": _cover_url(t),
+        })
+    if sort == "budget":
+        out.sort(key=lambda x: x["budget_total"], reverse=True)
+    elif sort == "name":
+        out.sort(key=lambda x: x["name"].lower())
+    else:  # recent (newest first)
+        out.sort(key=lambda x: x["id"], reverse=True)
+    return out
+
+
 @app.get("/public/{token}")
 def public_itinerary(token: str, session: Session = Depends(get_session)):
     trip = session.exec(select(Trip).where(Trip.share_token == token, Trip.is_public == True)).first()
