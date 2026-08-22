@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 from db import init_db, get_session, engine
 from models import User, Trip, City, Activity, Stop, StopActivity
 from auth import hash_pw, verify_pw, make_token, current_user
-from seed_data import CITIES
+from seed_data import seed_catalog
 
 app = FastAPI(title="GlobeTrotter API")
 
@@ -26,16 +26,7 @@ app.add_middleware(
 def _startup():
     init_db()
     with Session(engine) as s:
-        if s.exec(select(City)).first():
-            return
-        for name, country, ci, acts in CITIES:
-            city = City(name=name, country=country, cost_index=ci)
-            s.add(city)
-            s.commit()
-            s.refresh(city)
-            for aname, atype, cost, hrs in acts:
-                s.add(Activity(city_id=city.id, name=aname, type=atype, cost=cost, duration_hours=hrs))
-        s.commit()
+        seed_catalog(s)
 
 
 # ---------- schemas ----------
@@ -46,6 +37,7 @@ class Credentials(BaseModel):
 
 class TripIn(BaseModel):
     name: str
+    country: str = ""
     start_date: date
     end_date: date
     description: str = ""
@@ -252,12 +244,19 @@ def remove_activity(link_id: int, user: User = Depends(current_user), session: S
 
 
 # ---------- catalog ----------
+@app.get("/countries")
+def list_countries(session: Session = Depends(get_session)):
+    return session.exec(select(City.country).distinct().order_by(City.country)).all()
+
+
 @app.get("/cities")
-def search_cities(q: str = "", session: Session = Depends(get_session)):
+def search_cities(q: str = "", country: str = "", session: Session = Depends(get_session)):
     stmt = select(City)
+    if country:
+        stmt = stmt.where(City.country == country)
     if q:
         stmt = stmt.where(City.name.ilike(f"%{q}%") | City.country.ilike(f"%{q}%"))
-    return session.exec(stmt).all()
+    return session.exec(stmt.order_by(City.name)).all()
 
 
 @app.get("/cities/{city_id}/activities")

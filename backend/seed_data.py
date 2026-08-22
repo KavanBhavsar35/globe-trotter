@@ -1,95 +1,122 @@
-# Seed catalog: cities + their activities. Loaded on startup if City table empty.
-# (city_name, country, cost_index_usd_per_day, [ (activity, type, cost, hours) ... ])
+# Seed catalog: cities + their activities, grouped by country.
+# (city_name, country, cost_index_usd_per_night, [ (activity, type, cost, hours) ... ])
+# Scope: Japan, UK, India only — users pick a country, then its cities.
+
+from sqlmodel import select
 
 CITIES = [
-    ("Paris", "France", 180, [
-        ("Louvre Museum", "culture", 20, 3),
-        ("Eiffel Tower Summit", "sightseeing", 30, 2),
-        ("Seine River Cruise", "relax", 18, 1),
-        ("Montmartre Food Walk", "food", 45, 3),
-    ]),
-    ("Tokyo", "Japan", 160, [
-        ("Shibuya Crossing & Shopping", "sightseeing", 0, 2),
-        ("Sushi Making Class", "food", 70, 3),
-        ("teamLab Digital Art", "culture", 32, 2),
-        ("Mt. Takao Day Hike", "adventure", 15, 5),
-    ]),
-    ("Bangkok", "Thailand", 60, [
-        ("Grand Palace Tour", "culture", 15, 3),
-        ("Street Food Tuk-Tuk Night", "food", 40, 3),
-        ("Floating Market Trip", "sightseeing", 25, 4),
-        ("Thai Massage & Spa", "relax", 20, 2),
-    ]),
-    ("New York", "USA", 220, [
-        ("Statue of Liberty Ferry", "sightseeing", 25, 3),
-        ("Broadway Show", "culture", 120, 3),
-        ("Central Park Bike", "adventure", 18, 2),
-        ("Brooklyn Pizza Crawl", "food", 50, 2),
-    ]),
-    ("Rome", "Italy", 140, [
-        ("Colosseum & Forum", "culture", 28, 3),
-        ("Vatican Museums", "culture", 30, 3),
-        ("Trastevere Food Tour", "food", 55, 3),
-        ("Vespa City Ride", "adventure", 60, 2),
-    ]),
-    ("Barcelona", "Spain", 130, [
-        ("Sagrada Familia", "culture", 26, 2),
-        ("Tapas & Wine Tasting", "food", 48, 3),
-        ("Montjuic Cable Car", "sightseeing", 14, 1),
-        ("Costa Brava Kayak", "adventure", 65, 5),
-    ]),
-    ("Bali", "Indonesia", 70, [
-        ("Ubud Rice Terraces", "sightseeing", 10, 3),
-        ("Surf Lesson Kuta", "adventure", 35, 2),
-        ("Balinese Cooking Class", "food", 30, 3),
-        ("Spa & Yoga Retreat", "relax", 40, 3),
-    ]),
-    ("Dubai", "UAE", 200, [
-        ("Burj Khalifa Deck", "sightseeing", 45, 2),
-        ("Desert Safari", "adventure", 75, 6),
-        ("Gold Souk & Dhow Dinner", "food", 60, 3),
-        ("Dubai Mall Aquarium", "culture", 30, 2),
-    ]),
-    ("Istanbul", "Turkey", 90, [
-        ("Hagia Sophia & Blue Mosque", "culture", 25, 3),
-        ("Bosphorus Cruise", "relax", 22, 2),
-        ("Grand Bazaar Food Walk", "food", 35, 3),
-        ("Hot Air Balloon (Cappadocia trip)", "adventure", 180, 4),
-    ]),
-    ("London", "UK", 190, [
-        ("British Museum", "culture", 0, 3),
-        ("London Eye", "sightseeing", 40, 1),
-        ("West End Show", "culture", 90, 3),
-        ("Borough Market Tasting", "food", 45, 2),
-    ]),
-    ("Cape Town", "South Africa", 85, [
-        ("Table Mountain Cableway", "sightseeing", 30, 3),
-        ("Cape Peninsula Drive", "adventure", 70, 6),
-        ("Winelands Tasting", "food", 55, 4),
-        ("Robben Island Ferry", "culture", 35, 4),
-    ]),
-    ("Sydney", "Australia", 175, [
-        ("Opera House Tour", "culture", 40, 2),
-        ("Bondi to Coogee Walk", "adventure", 0, 3),
-        ("Harbour Bridge Climb", "adventure", 250, 4),
-        ("Fish Market Lunch", "food", 40, 2),
-    ]),
-    ("Lisbon", "Portugal", 100, [
-        ("Belem Tower & Monastery", "culture", 18, 3),
-        ("Tram 28 & Alfama Walk", "sightseeing", 5, 2),
-        ("Pastel de Nata Tasting", "food", 20, 1),
-        ("Sintra Day Trip", "adventure", 45, 6),
+    # ---------- Japan ----------
+    ("Tokyo", "Japan", 180, [
+        ("Senso-ji Temple, Asakusa", "culture", 0, 2),
+        ("Shibuya & Shinjuku Walk", "sightseeing", 0, 3),
+        ("Sushi Omakase Dinner", "food", 120, 2),
+        ("teamLab Planets Digital Art", "culture", 35, 3),
     ]),
     ("Kyoto", "Japan", 150, [
         ("Fushimi Inari Shrine", "culture", 0, 3),
-        ("Arashiyama Bamboo Grove", "sightseeing", 0, 2),
-        ("Tea Ceremony", "culture", 45, 2),
-        ("Kaiseki Dinner", "food", 90, 2),
+        ("Arashiyama Bamboo Grove", "nature", 0, 2),
+        ("Traditional Tea Ceremony", "culture", 45, 1),
+        ("Kaiseki Multi-course Dinner", "food", 90, 2),
     ]),
-    ("Marrakech", "Morocco", 65, [
-        ("Jemaa el-Fnaa Night Market", "food", 25, 3),
-        ("Majorelle Garden", "relax", 15, 2),
-        ("Atlas Mountains Trek", "adventure", 60, 7),
-        ("Medina Souk Tour", "culture", 20, 3),
+    ("Osaka", "Japan", 140, [
+        ("Osaka Castle", "sightseeing", 15, 2),
+        ("Dotonbori Street Food Crawl", "food", 40, 2),
+        ("Universal Studios Japan", "adventure", 80, 8),
+        ("Umeda Sky Building", "sightseeing", 20, 1),
+    ]),
+    ("Hiroshima", "Japan", 120, [
+        ("Peace Memorial Park & Museum", "culture", 0, 2),
+        ("Miyajima Island & Floating Torii", "nature", 25, 5),
+        ("Okonomiyaki Tasting", "food", 20, 1),
+    ]),
+    ("Sapporo", "Japan", 130, [
+        ("Sapporo Beer Museum", "food", 10, 2),
+        ("Odori Park Stroll", "nature", 0, 1),
+        ("Susukino Nightlife", "nightlife", 50, 3),
+    ]),
+
+    # ---------- United Kingdom ----------
+    ("London", "United Kingdom", 200, [
+        ("Tower of London", "culture", 35, 3),
+        ("British Museum", "culture", 0, 3),
+        ("West End Theatre Show", "nightlife", 90, 3),
+        ("Borough Market Food Tour", "food", 45, 2),
+    ]),
+    ("Edinburgh", "United Kingdom", 150, [
+        ("Edinburgh Castle", "culture", 25, 2),
+        ("Royal Mile Walk", "sightseeing", 0, 2),
+        ("Arthur's Seat Hike", "nature", 0, 3),
+        ("Scotch Whisky Tasting", "food", 40, 2),
+    ]),
+    ("Manchester", "United Kingdom", 130, [
+        ("Old Trafford Stadium Tour", "sightseeing", 30, 2),
+        ("Science & Industry Museum", "culture", 0, 2),
+        ("Northern Quarter Bar Crawl", "nightlife", 45, 3),
+    ]),
+    ("Bath", "United Kingdom", 140, [
+        ("Roman Baths", "culture", 30, 2),
+        ("Thermae Bath Spa", "nature", 50, 3),
+        ("Georgian City Walk", "sightseeing", 0, 2),
+    ]),
+    ("Liverpool", "United Kingdom", 120, [
+        ("The Beatles Story", "culture", 20, 2),
+        ("Royal Albert Dock", "sightseeing", 0, 2),
+        ("Mersey Ferry Cruise", "nature", 15, 1),
+    ]),
+
+    # ---------- India ----------
+    ("New Delhi", "India", 70, [
+        ("Red Fort", "culture", 8, 2),
+        ("India Gate & Rajpath", "sightseeing", 0, 1),
+        ("Old Delhi Street Food Walk", "food", 15, 3),
+        ("Qutub Minar", "culture", 8, 2),
+    ]),
+    ("Mumbai", "India", 90, [
+        ("Gateway of India", "sightseeing", 0, 1),
+        ("Elephanta Caves", "culture", 20, 4),
+        ("Marine Drive Sunset", "nature", 0, 1),
+        ("Bollywood Studio Tour", "culture", 40, 3),
+    ]),
+    ("Jaipur", "India", 60, [
+        ("Amber Fort", "culture", 12, 3),
+        ("Hawa Mahal", "sightseeing", 5, 1),
+        ("City Palace", "culture", 15, 2),
+        ("Rajasthani Thali Feast", "food", 12, 1),
+    ]),
+    ("Goa", "India", 80, [
+        ("Baga Beach", "nature", 0, 3),
+        ("Old Goa Churches", "culture", 0, 2),
+        ("Sunset Dolphin Cruise", "adventure", 30, 2),
+        ("Beach Shack Seafood", "food", 25, 2),
+    ]),
+    ("Varanasi", "India", 50, [
+        ("Ganga Aarti Ceremony", "culture", 0, 2),
+        ("Sunrise Boat Ride on the Ganges", "nature", 15, 2),
+        ("Sarnath Buddhist Site", "culture", 5, 2),
     ]),
 ]
+
+
+def seed_catalog(session, reset: bool = False) -> None:
+    """Seed cities + activities. reset=True wipes catalog (and dependent
+    stops/links) first — used by seed.py. Startup calls with reset=False and
+    seeds only when the City table is empty."""
+    from models import City, Activity, Stop, StopActivity
+
+    if reset:
+        for model in (StopActivity, Stop, Activity, City):
+            for row in session.exec(select(model)).all():
+                session.delete(row)
+        session.commit()
+
+    if session.exec(select(City)).first():
+        return  # already seeded
+
+    for name, country, ci, acts in CITIES:
+        city = City(name=name, country=country, cost_index=ci)
+        session.add(city)
+        session.commit()
+        session.refresh(city)
+        for aname, atype, cost, hrs in acts:
+            session.add(Activity(city_id=city.id, name=aname, type=atype, cost=cost, duration_hours=hrs))
+    session.commit()

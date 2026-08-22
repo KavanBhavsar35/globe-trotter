@@ -13,6 +13,7 @@ class Trip(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(index=True, foreign_key="user.id")
     name: str
+    country: str = ""  # trip is scoped to one country's catalog
     start_date: date
     end_date: date
     description: str = ""
