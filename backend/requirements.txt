@@ -4,3 +4,4 @@ passlib[argon2]
 pyjwt
 pydantic-settings
 rich
+boto3

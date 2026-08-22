@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     # comma-separated list of allowed origins
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # --- storage ---
+    # Object Storage (S3 / MinIO / Cloudflare R2)
+    STORAGE_PROVIDER: str = "minio"
+    STORAGE_BUCKET: str = "globe-trotter"
+    STORAGE_REGION: str = "ap-south-1"
+    STORAGE_ENDPOINT_URL: str | None = "http://localhost:9000"
+    STORAGE_ACCESS_KEY: str = "minioadmin"
+    STORAGE_SECRET_KEY: str = "minioadmin"
+
     # --- email ---
     EMAIL_PROVIDER: str = "console"  # console | smtp
     EMAIL_FROM_ADDRESS: str = "no-reply@globetrotter.local"

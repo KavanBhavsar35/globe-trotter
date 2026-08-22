@@ -2,10 +2,11 @@ import secrets
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlmodel import Session, select
+from botocore.exceptions import BotoCoreError, ClientError
 
 from db import init_db, get_session, engine
 from models import User, Trip, City, Activity, Stop, StopActivity, PasswordReset
@@ -13,9 +14,13 @@ from auth import hash_pw, verify_pw, make_token, current_user
 from seed_data import seed_catalog
 from core.config import settings
 from services.email_service import EmailService
+from services.storage_service import StorageService
 
 app = FastAPI(title="GlobeTrotter API")
 email_service = EmailService()
+storage = StorageService()
+
+MAX_PHOTO_BYTES = 5 * 1024 * 1024  # 5 MB
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +41,17 @@ def _startup():
 class Credentials(BaseModel):
     email: str
     password: str
+
+
+class SignupIn(BaseModel):
+    email: str
+    password: str
+    first_name: str = ""
+    last_name: str = ""
+    phone: str = ""
+    city: str = ""
+    country: str = ""
+    bio: str = ""
 
 
 class TripIn(BaseModel):
@@ -120,6 +136,13 @@ def owned_trip(trip_id: int, session: Session, user: User) -> Trip:
     return trip
 
 
+def _photo_url(user: User) -> str:
+    # Files are private; hand back a short-lived presigned GET URL for rendering.
+    if not user.photo_key:
+        return ""
+    return storage.generate_presigned_download_url(user.photo_key)
+
+
 # ---------- auth ----------
 @app.get("/health")
 def health():
@@ -127,10 +150,11 @@ def health():
 
 
 @app.post("/auth/signup")
-def signup(body: Credentials, session: Session = Depends(get_session)):
+def signup(body: SignupIn, session: Session = Depends(get_session)):
     if session.exec(select(User).where(User.email == body.email)).first():
         raise HTTPException(400, "Email already registered")
-    user = User(email=body.email, pw_hash=hash_pw(body.password))
+    data = body.model_dump(exclude={"password"})
+    user = User(**data, pw_hash=hash_pw(body.password))
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -147,7 +171,43 @@ def login(body: Credentials, session: Session = Depends(get_session)):
 
 @app.get("/auth/me")
 def me(user: User = Depends(current_user)):
-    return {"id": user.id, "email": user.email}
+    return {
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "phone": user.phone,
+        "city": user.city,
+        "country": user.country,
+        "bio": user.bio,
+        "photo_url": _photo_url(user),
+    }
+
+
+@app.post("/auth/me/photo")
+async def upload_photo(
+    file: UploadFile = File(...),
+    user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+):
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(400, "File must be an image")
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(400, "Image too large (max 5 MB)")
+    old_key = user.photo_key
+    try:
+        key = storage.upload_file(
+            data, file.filename or "photo.jpg", file.content_type, folder="profiles"
+        )
+        if old_key:
+            storage.delete_file(old_key)  # drop the replaced blob
+    except (BotoCoreError, ClientError):
+        raise HTTPException(502, "Storage unavailable")
+    user.photo_key = key
+    session.add(user)
+    session.commit()
+    return {"photo_url": _photo_url(user)}
 
 
 @app.post("/auth/forgot-password")

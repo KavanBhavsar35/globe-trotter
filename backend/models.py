@@ -7,6 +7,14 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
     pw_hash: str
+    # profile (registration screen) — all optional so email+password alone still works
+    first_name: str = ""
+    last_name: str = ""
+    phone: str = ""
+    city: str = ""
+    country: str = ""
+    bio: str = ""  # "Additional Information"
+    photo_key: str = ""  # object-storage key for profile photo (see StorageService)
 
 
 class PasswordReset(SQLModel, table=True):
