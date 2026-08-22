@@ -1,5 +1,5 @@
 import secrets
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -8,15 +8,18 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from db import init_db, get_session, engine
-from models import User, Trip, City, Activity, Stop, StopActivity
+from models import User, Trip, City, Activity, Stop, StopActivity, PasswordReset
 from auth import hash_pw, verify_pw, make_token, current_user
 from seed_data import seed_catalog
+from core.config import settings
+from services.email_service import EmailService
 
 app = FastAPI(title="GlobeTrotter API")
+email_service = EmailService()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_origins_list,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -51,6 +54,15 @@ class StopIn(BaseModel):
 
 class ActivityIn(BaseModel):
     activity_id: int
+
+
+class ForgotIn(BaseModel):
+    email: str
+
+
+class ResetIn(BaseModel):
+    token: str
+    password: str
 
 
 # ---------- helpers ----------
@@ -136,6 +148,47 @@ def login(body: Credentials, session: Session = Depends(get_session)):
 @app.get("/auth/me")
 def me(user: User = Depends(current_user)):
     return {"id": user.id, "email": user.email}
+
+
+@app.post("/auth/forgot-password")
+def forgot_password(body: ForgotIn, session: Session = Depends(get_session)):
+    # Always return the same response — never reveal whether an email is registered.
+    user = session.exec(select(User).where(User.email == body.email)).first()
+    if user:
+        # Invalidate any prior tokens for this user, then issue a fresh one.
+        for old in session.exec(select(PasswordReset).where(PasswordReset.user_id == user.id)).all():
+            session.delete(old)
+        token = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_MINUTES)
+        session.add(PasswordReset(user_id=user.id, token=token, expires_at=expires))
+        session.commit()
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        email_service.send_password_reset_email(user.email, token, reset_url=reset_url)
+    return {"ok": True, "message": "If that email is registered, a reset link has been sent."}
+
+
+@app.post("/auth/reset-password")
+def reset_password(body: ResetIn, session: Session = Depends(get_session)):
+    if len(body.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    pr = session.exec(select(PasswordReset).where(PasswordReset.token == body.token)).first()
+    if not pr:
+        raise HTTPException(400, "Invalid or expired reset link")
+    expires = pr.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)  # SQLite drops tz on round-trip
+    if expires < datetime.now(timezone.utc):
+        session.delete(pr)
+        session.commit()
+        raise HTTPException(400, "Invalid or expired reset link")
+    user = session.get(User, pr.user_id)
+    if not user:
+        raise HTTPException(400, "Invalid or expired reset link")
+    user.pw_hash = hash_pw(body.password)
+    session.add(user)
+    session.delete(pr)  # single-use token
+    session.commit()
+    return {"ok": True}
 
 
 # ---------- trips ----------

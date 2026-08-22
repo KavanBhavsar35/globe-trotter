@@ -2,3 +2,5 @@ fastapi[standard]
 sqlmodel
 passlib[argon2]
 pyjwt
+pydantic-settings
+rich

@@ -105,17 +105,18 @@ Frontend `app/(app)/trips/[id]/page.tsx`:
 
 Verify: `tsc --noEmit` clean. Totals equal sum of stop subtotals; pie renders; matches builder data.
 
-## P5 — Public share ⬜
+## P5 — Public share ✅
 
 Goal: shareable read-only itinerary. Screen #11.
 
 Backend (built): `POST /trips/{id}/share` → `{share_token}`; `GET /public/{token}` (no auth).
 
 Frontend:
-- Share button → calls share, shows public URL, "Copy link" (`navigator.clipboard`).
-- `app/trip/[token]/page.tsx` — public, unguarded, read-only itinerary + budget; "Copy Trip" CTA routes to signup.
+- `components/share-dialog.tsx` — **Share** button (on the trip view) → `POST /trips/{id}/share` → dialog with the public URL (`${origin}/trip/{token}`), readonly input + copy (`navigator.clipboard`) + open-in-new.
+- `app/trip/[token]/page.tsx` — public, **unguarded** (outside `(app)`, own header/container), reads `GET /public/{token}` with `auth:false`; "Plan your own trip" CTA → `/login`; invalid/unshared → not-found card.
+- `components/itinerary-detail.tsx` — shared read-only Itinerary/Budget tabs block, reused by the owner view and the public page (single source of truth).
 
-Verify: open share URL in a logged-out/incognito window → itinerary shows; private trips 404.
+Verify: `tsc --noEmit` clean. Open share URL logged-out → itinerary shows; private/unknown token → not-found.
 
 ## P6 — Demo prep + buffer ⬜
 
