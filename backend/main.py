@@ -177,7 +177,18 @@ def _me_dict(user: User) -> dict:
         "country": user.country,
         "bio": user.bio,
         "photo_url": _photo_url(user),
+        "is_admin": _is_admin(user),
     }
+
+
+def _is_admin(user: User) -> bool:
+    return bool(settings.ADMIN_EMAIL) and user.email == settings.ADMIN_EMAIL
+
+
+def require_admin(user: User = Depends(current_user)) -> User:
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return user
 
 
 # ---------- auth ----------
@@ -522,6 +533,55 @@ def search_cities(q: str = "", country: str = "", session: Session = Depends(get
 @app.get("/cities/{city_id}/activities")
 def city_activities(city_id: int, session: Session = Depends(get_session)):
     return session.exec(select(Activity).where(Activity.city_id == city_id)).all()
+
+
+# ---------- admin ----------
+@app.get("/admin/stats")
+def admin_stats(user: User = Depends(require_admin), session: Session = Depends(get_session)):
+    # Small-scale in-Python aggregation — fine for a demo DB. ponytail: naive O(rows) scans, add SQL GROUP BY only if the dataset grows.
+    users = session.exec(select(User)).all()
+    trips = session.exec(select(Trip)).all()
+    stops = session.exec(select(Stop)).all()
+    links = session.exec(select(StopActivity)).all()
+
+    def _top(counts: dict[int, int], fetch, extra):
+        rows = []
+        for oid, cnt in sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:6]:
+            obj = fetch(oid)
+            if obj:
+                rows.append({"count": cnt, **extra(obj)})
+        return rows
+
+    city_counts: dict[int, int] = {}
+    for s in stops:
+        city_counts[s.city_id] = city_counts.get(s.city_id, 0) + 1
+    act_counts: dict[int, int] = {}
+    for lk in links:
+        act_counts[lk.activity_id] = act_counts.get(lk.activity_id, 0) + 1
+    trip_counts: dict[int, int] = {}
+    for t in trips:
+        trip_counts[t.user_id] = trip_counts.get(t.user_id, 0) + 1
+
+    return {
+        "totals": {
+            "users": len(users),
+            "trips": len(trips),
+            "public_trips": sum(1 for t in trips if t.is_public),
+            "activities_added": len(links),
+        },
+        "popular_cities": _top(city_counts, lambda i: session.get(City, i),
+                               lambda c: {"name": c.name, "country": c.country}),
+        "popular_activities": _top(act_counts, lambda i: session.get(Activity, i),
+                                   lambda a: {"name": a.name, "type": a.type}),
+        "users": [
+            {
+                "id": u.id, "email": u.email,
+                "name": " ".join(filter(None, [u.first_name, u.last_name])),
+                "trip_count": trip_counts.get(u.id, 0),
+            }
+            for u in users
+        ],
+    }
 
 
 # ---------- public read-only ----------

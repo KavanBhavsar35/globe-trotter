@@ -10,6 +10,7 @@ export type Me = {
   country: string;
   bio: string;
   photo_url: string; // presigned GET URL, "" if no photo
+  is_admin: boolean; // true when email matches backend ADMIN_EMAIL
 };
 
 export type Trip = {

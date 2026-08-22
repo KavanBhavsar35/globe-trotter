@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_DAYS: int = 7
     RESET_TOKEN_MINUTES: int = 60  # password-reset link validity
+    ADMIN_EMAIL: str = ""  # email granted the admin panel (blank = no admin)
 
     # --- database ---
     DATABASE_URL: str = "sqlite:///globetrotter.db"
