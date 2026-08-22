@@ -34,6 +34,7 @@ class Trip(SQLModel, table=True):
     description: str = ""
     is_public: bool = False
     share_token: Optional[str] = Field(default=None, index=True, unique=True)
+    cover_key: str = ""  # object-storage key for optional cover photo
 
 
 class City(SQLModel, table=True):
@@ -41,15 +42,19 @@ class City(SQLModel, table=True):
     name: str = Field(index=True)
     country: str
     cost_index: int  # rough daily stay cost in USD
+    popularity: int = 0  # 0–100 score, drives "popular" sort/badge in city search
+    img_url: str = ""  # optional real photo; blank → picsum fallback on the client
 
 
 class Activity(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     city_id: int = Field(index=True, foreign_key="city.id")
     name: str
-    type: str  # sightseeing | food | adventure | culture | relax
+    type: str  # sightseeing | food | adventure | culture | nature | nightlife | relax
     cost: int
     duration_hours: int
+    description: str = ""  # short blurb for the activity search quick-view
+    img_url: str = ""  # optional real photo; blank → picsum fallback on the client
 
 
 class Stop(SQLModel, table=True):

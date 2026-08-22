@@ -116,7 +116,7 @@ def build_itinerary(trip: Trip, session: Session) -> dict:
         cat["transport"] += transport
         cat["activities"] += act_cost
         out_stops.append({
-            "stop_id": st.id, "city": {"id": city.id, "name": city.name, "country": city.country},
+            "stop_id": st.id, "city": {"id": city.id, "name": city.name, "country": city.country, "img_url": city.img_url},
             "start_date": st.start_date, "end_date": st.end_date, "nights": nights,
             "activities": acts, "subtotal": stay + meals + transport + act_cost,
         })
@@ -126,7 +126,8 @@ def build_itinerary(trip: Trip, session: Session) -> dict:
         "total": total, "categories": cat,
         "per_day_avg": round(total / total_nights) if total_nights else 0,
     }
-    return {"trip": trip, "stops": out_stops, "budget": budget}
+    trip_out = {**trip.model_dump(), "cover_url": _cover_url(trip)}
+    return {"trip": trip_out, "stops": out_stops, "budget": budget}
 
 
 def owned_trip(trip_id: int, session: Session, user: User) -> Trip:
@@ -141,6 +142,12 @@ def _photo_url(user: User) -> str:
     if not user.photo_key:
         return ""
     return storage.generate_presigned_download_url(user.photo_key)
+
+
+def _cover_url(trip: Trip) -> str:
+    if not trip.cover_key:
+        return ""
+    return storage.generate_presigned_download_url(trip.cover_key)
 
 
 # ---------- auth ----------
@@ -257,8 +264,13 @@ def list_trips(user: User = Depends(current_user), session: Session = Depends(ge
     trips = session.exec(select(Trip).where(Trip.user_id == user.id)).all()
     out = []
     for t in trips:
-        stops = session.exec(select(Stop).where(Stop.trip_id == t.id)).all()
-        out.append({**t.model_dump(), "stop_count": len(stops)})
+        it = build_itinerary(t, session)  # reuse for stop count + budget total
+        out.append({
+            **t.model_dump(),
+            "stop_count": len(it["stops"]),
+            "budget_total": it["budget"]["total"],
+            "cover_url": _cover_url(t),
+        })
     return out
 
 
@@ -269,6 +281,48 @@ def create_trip(body: TripIn, user: User = Depends(current_user), session: Sessi
     session.commit()
     session.refresh(trip)
     return trip
+
+
+@app.post("/trips/{trip_id}/cover")
+async def upload_cover(
+    trip_id: int,
+    file: UploadFile = File(...),
+    user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+):
+    trip = owned_trip(trip_id, session, user)
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(400, "File must be an image")
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(400, "Image too large (max 5 MB)")
+    old_key = trip.cover_key
+    try:
+        key = storage.upload_file(
+            data, file.filename or "cover.jpg", file.content_type, folder="covers"
+        )
+        if old_key:
+            storage.delete_file(old_key)
+    except (BotoCoreError, ClientError):
+        raise HTTPException(502, "Storage unavailable")
+    trip.cover_key = key
+    session.add(trip)
+    session.commit()
+    return {"cover_url": _cover_url(trip)}
+
+
+@app.delete("/trips/{trip_id}/cover")
+def delete_cover(trip_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)):
+    trip = owned_trip(trip_id, session, user)
+    if trip.cover_key:
+        try:
+            storage.delete_file(trip.cover_key)
+        except (BotoCoreError, ClientError):
+            pass  # best-effort blob delete; still clear the reference
+        trip.cover_key = ""
+        session.add(trip)
+        session.commit()
+    return {"ok": True}
 
 
 @app.get("/trips/{trip_id}/itinerary")
