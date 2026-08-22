@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-svh flex-col">
       <SiteNav />
-      <div className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-6">{children}</div>
+      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-10">{children}</div>
     </div>
   );
 }

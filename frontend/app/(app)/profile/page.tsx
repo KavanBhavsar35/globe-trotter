@@ -124,23 +124,28 @@ export default function ProfilePage() {
   const fullName = [form.first_name, form.last_name].filter(Boolean).join(" ") || "Traveller";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Profile settings</h1>
+    <div className="mx-auto max-w-3xl space-y-10 pb-12">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold md:text-4xl">Settings</h1>
+        <p className="text-muted-foreground">Manage your profile and preferences</p>
+      </div>
 
-      {/* Photo */}
-      <Card>
-        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center sm:flex-row sm:text-left">
+      {/* Profile Identity Section */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold">Profile</h2>
+        <div className="flex flex-col items-center gap-6 rounded-xl border bg-card p-8 sm:flex-row sm:items-start">
           <div className="relative">
             {me.photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element -- presigned URL expires; next/image optimizer would cache a stale link
               <img
                 src={me.photo_url}
                 alt={fullName}
-                className="size-24 rounded-full object-cover ring-2 ring-border"
+                className="size-28 rounded-full object-cover ring-4 ring-border"
               />
             ) : (
-              <div className="flex size-24 items-center justify-center rounded-full bg-muted ring-2 ring-border">
-                <UserRound className="size-10 text-muted-foreground" />
+              <div className="flex size-28 items-center justify-center rounded-full bg-muted ring-4 ring-border">
+                <UserRound className="size-12 text-muted-foreground" />
               </div>
             )}
             <button
@@ -148,137 +153,155 @@ export default function ProfilePage() {
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
               aria-label="Change photo"
-              className="absolute -bottom-1 -right-1 rounded-full bg-primary p-2 text-primary-foreground shadow hover:opacity-90 disabled:opacity-50"
+              className="absolute -bottom-1 -right-1 rounded-full bg-primary p-2.5 text-primary-foreground shadow-lg transition-transform hover:scale-105 disabled:opacity-50"
             >
-              <Camera className="size-4" />
+              <Camera className="size-5" />
             </button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPick} />
           </div>
-          <div className="space-y-1">
-            <p className="text-xl font-semibold">{fullName}</p>
-            <p className="text-sm text-muted-foreground">{me.email}</p>
-            {uploading && <p className="text-xs text-muted-foreground">Uploading…</p>}
+          <div className="flex-1 space-y-2 text-center sm:text-left">
+            <p className="text-2xl font-bold">{fullName}</p>
+            <p className="text-muted-foreground">{me.email}</p>
+            {uploading && <p className="text-sm text-primary">Uploading photo…</p>}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Editable details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Account details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="first_name" label="First name">
-              <Input id="first_name" value={form.first_name} onChange={set("first_name")} />
+      {/* Account Details Section */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold">Personal information</h2>
+        <div className="rounded-xl border bg-card p-6">
+          <div className="space-y-5">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field id="first_name" label="First name">
+                <Input id="first_name" value={form.first_name} onChange={set("first_name")} />
+              </Field>
+              <Field id="last_name" label="Last name">
+                <Input id="last_name" value={form.last_name} onChange={set("last_name")} />
+              </Field>
+            </div>
+            <Field id="email" label="Email address">
+              <Input id="email" type="email" value={form.email} onChange={set("email")} />
             </Field>
-            <Field id="last_name" label="Last name">
-              <Input id="last_name" value={form.last_name} onChange={set("last_name")} />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field id="phone" label="Phone number">
+                <Input id="phone" value={form.phone} onChange={set("phone")} />
+              </Field>
+              <Field id="city" label="City">
+                <Input id="city" value={form.city} onChange={set("city")} />
+              </Field>
+            </div>
+            <Field id="country" label="Country">
+              <Input id="country" value={form.country} onChange={set("country")} />
             </Field>
+            <Field id="bio" label="About you">
+              <textarea
+                id="bio"
+                value={form.bio}
+                onChange={set("bio")}
+                rows={3}
+                placeholder="Share a bit about yourself and your travel interests…"
+                className="w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-sm shadow-xs outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+              />
+            </Field>
+            <div className="flex justify-end border-t pt-5">
+              <Button onClick={save} disabled={saving} size="lg">
+                <Save /> {saving ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
           </div>
-          <Field id="email" label="Email">
-            <Input id="email" type="email" value={form.email} onChange={set("email")} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="phone" label="Phone">
-              <Input id="phone" value={form.phone} onChange={set("phone")} />
-            </Field>
-            <Field id="city" label="City">
-              <Input id="city" value={form.city} onChange={set("city")} />
-            </Field>
-          </div>
-          <Field id="country" label="Country">
-            <Input id="country" value={form.country} onChange={set("country")} />
-          </Field>
-          <Field id="bio" label="Additional information">
-            <textarea
-              id="bio"
-              value={form.bio}
-              onChange={set("bio")}
-              rows={3}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </Field>
-          <div className="flex justify-end">
-            <Button onClick={save} disabled={saving}>
-              <Save /> {saving ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Globe className="size-4" /> Language
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Field id="lang" label="Preferred language">
+      {/* Preferences Section */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold">Preferences</h2>
+        <div className="rounded-xl border bg-card p-6">
+          <Field id="lang" label="Language">
             <select
               id="lang"
               value={lang}
               onChange={(e) => changeLang(e.target.value)}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-sm shadow-xs outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
             >
               {LANGS.map(([code, label]) => (
                 <option key={code} value={code}>{label}</option>
               ))}
             </select>
-          </Field>
-        </CardContent>
-      </Card>
-
-      {/* Saved destinations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MapPin className="size-4" /> Saved destinations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {dests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Cities from your trips show up here. Add stops to a trip to build the list.
+            <p className="mt-2 text-xs text-muted-foreground">
+              Your preferred language for the interface
             </p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
-              {dests.map((d) => (
-                <div key={d.id} className="overflow-hidden rounded-lg border">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- external loremflickr fallback, not a local asset */}
-                  <img
-                    src={imageOr(d.img_url, `${d.name}, ${d.country}`, 320, 180)}
-                    alt={d.name}
-                    className="h-24 w-full object-cover"
-                  />
-                  <div className="p-2">
-                    <p className="text-sm font-medium leading-tight">{d.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {d.country} · ~{money(d.cost_index)}/day
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </Field>
+        </div>
+      </section>
 
-      {/* Danger zone */}
-      <Card className="border-destructive/40">
-        <CardHeader>
-          <CardTitle className="text-base text-destructive">Delete account</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Permanently delete your profile and all trips. This cannot be undone.
+      {/* Saved Destinations Section */}
+      <section className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold">Saved destinations</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Cities you've added to your trips
           </p>
-          <Button variant="destructive" onClick={onDelete} className="shrink-0">
-            <Trash2 /> Delete account
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+        {dests.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed bg-muted/30 p-12 text-center">
+            <MapPin className="mx-auto mb-3 size-10 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">
+              No saved destinations yet. Add stops to your trips to build your collection.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {dests.map((d) => (
+              <div 
+                key={d.id} 
+                className="group overflow-hidden rounded-xl border-0 shadow-sm ring-1 ring-border/50 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- external loremflickr fallback, not a local asset */}
+                <img
+                  src={imageOr(d.img_url, `${d.name}, ${d.country}`, 320, 180)}
+                  alt={d.name}
+                  className="aspect-destination w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                <div className="space-y-1 bg-card p-3">
+                  <p className="font-semibold leading-tight">{d.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {d.country} · <span className="font-mono">{money(d.cost_index)}</span>/day
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Danger Zone Section */}
+      <section className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold text-destructive">Danger zone</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Irreversible actions
+          </p>
+        </div>
+        <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-destructive">Delete your account</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                This will permanently delete your profile, trips, and all associated data. This action cannot be undone.
+              </p>
+            </div>
+            <Button 
+              variant="destructive" 
+              onClick={onDelete} 
+              className="shrink-0"
+              size="lg"
+            >
+              <Trash2 /> Delete account
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

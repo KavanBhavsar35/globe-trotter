@@ -1,18 +1,32 @@
 import type { Metadata } from "next"
-import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google"
+import { DM_Serif_Display, Geist_Mono, Instrument_Sans } from "next/font/google"
 
 import "./globals.css"
+
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
-const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display" })
-const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
+const sans = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
+
+const display = DM_Serif_Display({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: "400",
+})
+
+const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+})
 
 export const metadata: Metadata = {
   title: "GlobeTrotter",
-  description: "Plan multi-city trips, build day-wise itineraries, see your budget.",
+  description:
+    "Plan multi-city trips, build day-wise itineraries, see your budget.",
 }
 
 export default function RootLayout({
@@ -26,7 +40,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(
         "antialiased font-sans",
-        inter.variable,
+        sans.variable,
         display.variable,
         fontMono.variable,
       )}
