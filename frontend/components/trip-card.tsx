@@ -33,7 +33,12 @@ export function TripCard({ trip, onDeleted }: { trip: Trip; onDeleted?: (id: num
   return (
     <Link href={`/trips/${trip.id}`} className="group block">
       <Card className="relative gap-0 overflow-hidden py-0 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lg">
-        <div className="h-2 bg-gradient-to-r from-primary to-chart-2" />
+        {trip.cover_url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- presigned URL expires; next/image would cache a stale link
+          <img src={trip.cover_url} alt="" className="h-28 w-full object-cover" />
+        ) : (
+          <div className="h-2 bg-gradient-to-r from-primary to-chart-2" />
+        )}
         <CardHeader className="pt-5">
           <CardTitle className="text-lg">{trip.name}</CardTitle>
           {trip.description && (

@@ -7,12 +7,13 @@ import {
   ArrowLeft,
   CalendarDays,
   Clock,
+  ImagePlus,
   Trash2,
   Wallet,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiUpload } from "@/lib/api";
 import { confirmToast } from "@/lib/confirm";
 import type { Itinerary } from "@/lib/types";
 import { fmtRange, money } from "@/lib/format";
@@ -28,6 +29,8 @@ export default function BuildPage() {
   const tripId = Number(params.id);
   const [it, setIt] = React.useState<Itinerary | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [coverBusy, setCoverBusy] = React.useState(false);
+  const coverRef = React.useRef<HTMLInputElement>(null);
 
   const reload = React.useCallback(async () => {
     try {
@@ -60,6 +63,36 @@ export default function BuildPage() {
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not remove.");
+    }
+  }
+
+  async function uploadCover(file: File) {
+    if (!file.type.startsWith("image/")) return toast.error("Pick an image file");
+    setCoverBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      await apiUpload(`/trips/${tripId}/cover`, form);
+      toast.success("Cover updated.");
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setCoverBusy(false);
+    }
+  }
+
+  async function removeCover() {
+    if (!(await confirmToast("Remove the cover photo?"))) return;
+    setCoverBusy(true);
+    try {
+      await apiFetch(`/trips/${tripId}/cover`, { method: "DELETE" });
+      toast.success("Cover removed.");
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not remove.");
+    } finally {
+      setCoverBusy(false);
     }
   }
 
@@ -98,6 +131,54 @@ export default function BuildPage() {
           <Wallet className="size-4 text-primary" />
           <span className="font-semibold">{money(budget.total)}</span>
         </div>
+      </div>
+
+      {/* Cover photo */}
+      <div>
+        {trip.cover_url ? (
+          <div className="relative overflow-hidden rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element -- presigned URL expires; next/image would cache a stale link */}
+            <img src={trip.cover_url} alt="" className="h-40 w-full object-cover" />
+            <div className="absolute right-3 top-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={coverBusy}
+                onClick={() => coverRef.current?.click()}
+              >
+                <ImagePlus /> Change
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={coverBusy}
+                onClick={removeCover}
+                className="text-destructive"
+              >
+                <Trash2 /> Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            disabled={coverBusy}
+            onClick={() => coverRef.current?.click()}
+          >
+            <ImagePlus /> Add cover photo
+          </Button>
+        )}
+        <input
+          ref={coverRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) uploadCover(f);
+          }}
+        />
       </div>
 
       {/* Add a stop */}
@@ -185,8 +266,8 @@ export default function BuildPage() {
                   stopId={stop.stop_id}
                   cityId={stop.city.id}
                   cityName={stop.city.name}
-                  existingIds={stop.activities.map((a) => a.activity_id)}
-                  onAdded={reload}
+                  existing={stop.activities}
+                  onChanged={reload}
                 />
               </CardFooter>
             </Card>

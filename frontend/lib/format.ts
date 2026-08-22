@@ -11,6 +11,25 @@ export function fmtDate(d: string): string {
   return parse(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+// Day-wise label, e.g. "Fri, Aug 1".
+export function fmtDateLong(d: string): string {
+  if (!d) return "";
+  return parse(d).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// Shift a YYYY-MM-DD string by n days, returning YYYY-MM-DD (local, no TZ drift).
+export function addDays(d: string, n: number): string {
+  const dt = parse(d);
+  dt.setDate(dt.getDate() + n);
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${m}-${day}`;
+}
+
 export function fmtRange(start: string, end: string): string {
   const s = parse(start);
   const e = parse(end);
@@ -23,8 +42,13 @@ export function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-// Placeholder place photo: random mountain image, stable per seed via ?lock.
-// ponytail: external stand-in for real per-city photos; swap the URL when we have real ones.
-export function placeImage(seed: number | string, w = 640, h = 360): string {
-  return `https://loremflickr.com/${w}/${h}/mountain?lock=${seed}`;
+// Deterministic placeholder photo from Lorem Picsum, stable per seed.
+export function picsum(seed: number | string, w = 640, h = 360): string {
+  return `https://picsum.photos/seed/${seed}/${w}/${h}`;
+}
+
+// Prefer a stored image; fall back to a stable picsum placeholder.
+// ponytail: catalog img_url is blank for now — swap picsum for real photos when we have them.
+export function imageOr(url: string | undefined | null, seed: number | string, w = 640, h = 360): string {
+  return url ? url : picsum(seed, w, h);
 }

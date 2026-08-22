@@ -2,8 +2,8 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   images: {
-    // external placeholder place photos (see lib/format.ts:placeImage)
-    remotePatterns: [{ protocol: "https", hostname: "loremflickr.com" }],
+    // placeholder catalog photos (see lib/format.ts:picsum)
+    remotePatterns: [{ protocol: "https", hostname: "picsum.photos" }],
   },
 }
 

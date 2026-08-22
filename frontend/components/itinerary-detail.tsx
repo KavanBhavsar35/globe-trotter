@@ -3,10 +3,11 @@
 import * as React from "react";
 import Image from "next/image";
 import { Pie, PieChart, Cell } from "recharts";
-import { Clock, Wallet } from "lucide-react";
-import type { Itinerary } from "@/lib/types";
-import { fmtRange, money, placeImage } from "@/lib/format";
+import { CalendarDays, Clock, List, MapPin, Wallet } from "lucide-react";
+import type { Itinerary, ItineraryStop, StopActivity } from "@/lib/types";
+import { addDays, fmtDateLong, fmtRange, money, imageOr } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -28,9 +29,171 @@ const chartConfig: ChartConfig = Object.fromEntries(
   CATS.map((c) => [c.key, { label: c.label, color: c.color }])
 );
 
+/** Activity rows for a stop — shared by list + calendar views. */
+function ActivityList({ activities }: { activities: StopActivity[] }) {
+  if (activities.length === 0) {
+    return <p className="text-sm text-muted-foreground">No activities planned.</p>;
+  }
+  return (
+    <ul className="space-y-2">
+      {activities.map((a) => (
+        <li
+          key={a.stop_activity_id}
+          className="flex items-center justify-between gap-3 rounded-md border p-2.5"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{a.name}</p>
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="capitalize">
+                {a.type}
+              </Badge>
+              <span>{money(a.cost)}</span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="size-3" />
+                {a.duration_hours}h
+              </span>
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** City name + country + date range + subtotal — shared heading line. */
+function CityHeading({ stop }: { stop: ItineraryStop }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-semibold leading-tight">
+          {stop.city.name}
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            {stop.city.country}
+          </span>
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {fmtRange(stop.start_date, stop.end_date)} · {stop.nights}{" "}
+          {stop.nights === 1 ? "night" : "nights"}
+        </p>
+      </div>
+      <Badge variant="secondary">{money(stop.subtotal)}</Badge>
+    </div>
+  );
+}
+
+/** Stacked city cards with a cover image — the classic list view. */
+function ListView({ stops }: { stops: ItineraryStop[] }) {
+  return (
+    <div className="space-y-4">
+      {stops.map((stop, i) => (
+        <Card key={stop.stop_id} className="gap-0 overflow-hidden py-0">
+          <div className="relative h-32 w-full">
+            <Image
+              src={imageOr(stop.city.img_url, `city-${stop.city.id}`)}
+              alt={stop.city.name}
+              fill
+              sizes="(max-width: 768px) 100vw, 640px"
+              className="object-cover"
+            />
+          </div>
+          <CardHeader className="flex-row items-start gap-3 border-b bg-muted/30 py-4">
+            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              {i + 1}
+            </span>
+            <div className="flex-1">
+              <CityHeading stop={stop} />
+            </div>
+          </CardHeader>
+          <CardContent className="py-4">
+            <ActivityList activities={stop.activities} />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+type DayRow = {
+  key: string;
+  dayNo: number;
+  date: string;
+  stop: ItineraryStop;
+  isFirst: boolean; // first day of this stop → show full card
+};
+
+// Expand stops into one row per night. Activities aren't day-assigned in the
+// data, so they render on the stop's first day; later days show a slim marker.
+// ponytail: per-day activity scheduling needs a day field on StopActivity — add if asked.
+function toDayRows(stops: ItineraryStop[]): DayRow[] {
+  const rows: DayRow[] = [];
+  let dayNo = 0;
+  for (const stop of stops) {
+    for (let d = 0; d < stop.nights; d++) {
+      dayNo += 1;
+      rows.push({
+        key: `${stop.stop_id}-${d}`,
+        dayNo,
+        date: addDays(stop.start_date, d),
+        stop,
+        isFirst: d === 0,
+      });
+    }
+  }
+  return rows;
+}
+
+/** Day-by-day vertical timeline. */
+function CalendarView({ stops }: { stops: ItineraryStop[] }) {
+  const rows = toDayRows(stops);
+  return (
+    <div>
+      {rows.map((row, idx) => (
+        <div key={row.key} className="relative flex gap-4">
+          {/* rail: day number + connector */}
+          <div className="flex flex-col items-center">
+            <span
+              className={`flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                row.isFirst
+                  ? "bg-primary text-primary-foreground"
+                  : "border bg-background text-muted-foreground"
+              }`}
+            >
+              {row.dayNo}
+            </span>
+            {idx < rows.length - 1 && <span className="w-px flex-1 bg-border" />}
+          </div>
+
+          {/* content */}
+          <div className="flex-1 pb-6">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Day {row.dayNo} · {fmtDateLong(row.date)}
+            </p>
+            {row.isFirst ? (
+              <Card className="mt-1.5 gap-0 py-0">
+                <CardHeader className="border-b bg-muted/30 py-3">
+                  <CityHeading stop={row.stop} />
+                </CardHeader>
+                <CardContent className="py-3">
+                  <ActivityList activities={row.stop.activities} />
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <MapPin className="size-3.5" />
+                Exploring {row.stop.city.name}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Read-only itinerary + budget tabs. Shared by the owner view and the public share page. */
 export function ItineraryDetail({ it }: { it: Itinerary }) {
   const { stops, budget } = it;
+  const [view, setView] = React.useState<"list" | "calendar">("list");
   const pieData = CATS.map((c) => ({
     key: c.key,
     label: c.label,
@@ -52,70 +215,31 @@ export function ItineraryDetail({ it }: { it: Itinerary }) {
             No stops planned yet.
           </p>
         ) : (
-          stops.map((stop, i) => (
-            <Card key={stop.stop_id} className="gap-0 overflow-hidden py-0">
-              <div className="relative h-32 w-full">
-                <Image
-                  src={placeImage(stop.city.id)}
-                  alt={stop.city.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 640px"
-                  className="object-cover"
-                />
-              </div>
-              <CardHeader className="flex-row items-start justify-between gap-3 border-b bg-muted/30 py-4">
-                <div className="flex items-start gap-3">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-semibold leading-tight">
-                      {stop.city.name}
-                      <span className="ml-2 text-sm font-normal text-muted-foreground">
-                        {stop.city.country}
-                      </span>
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {fmtRange(stop.start_date, stop.end_date)} · {stop.nights}{" "}
-                      {stop.nights === 1 ? "night" : "nights"}
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary">{money(stop.subtotal)}</Badge>
-              </CardHeader>
+          <>
+            {/* view mode toggle */}
+            <div className="inline-flex rounded-lg border p-0.5">
+              <Button
+                size="sm"
+                variant={view === "list" ? "default" : "ghost"}
+                onClick={() => setView("list")}
+              >
+                <List /> List
+              </Button>
+              <Button
+                size="sm"
+                variant={view === "calendar" ? "default" : "ghost"}
+                onClick={() => setView("calendar")}
+              >
+                <CalendarDays /> Calendar
+              </Button>
+            </div>
 
-              <CardContent className="py-4">
-                {stop.activities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No activities planned.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {stop.activities.map((a) => (
-                      <li
-                        key={a.stop_activity_id}
-                        className="flex items-center justify-between gap-3 rounded-md border p-2.5"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{a.name}</p>
-                          <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                            <Badge variant="outline" className="capitalize">
-                              {a.type}
-                            </Badge>
-                            <span>{money(a.cost)}</span>
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="size-3" />
-                              {a.duration_hours}h
-                            </span>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          ))
+            {view === "list" ? (
+              <ListView stops={stops} />
+            ) : (
+              <CalendarView stops={stops} />
+            )}
+          </>
         )}
       </TabsContent>
 

@@ -3,13 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { CalendarDays, Globe, MapPin } from "lucide-react";
+import { Globe } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import type { Itinerary } from "@/lib/types";
-import { fmtRange } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ItineraryDetail } from "@/components/itinerary-detail";
+import { TripHero } from "@/components/trip-hero";
 
 type State =
   | { status: "loading" }
@@ -69,29 +69,11 @@ export default function PublicTripPage() {
 
         {state.status === "ok" && (
           <>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-primary">
-                Shared itinerary
-              </p>
-              <h1 className="text-2xl font-bold">{state.it.trip.name}</h1>
-              {state.it.trip.description && (
-                <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-                  {state.it.trip.description}
-                </p>
-              )}
-              <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays className="size-4" />
-                  {fmtRange(state.it.trip.start_date, state.it.trip.end_date)}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="size-4" />
-                  {state.it.stops.length}{" "}
-                  {state.it.stops.length === 1 ? "stop" : "stops"}
-                </span>
-              </p>
-            </div>
-
+            <TripHero
+              trip={state.it.trip}
+              stopCount={state.it.stops.length}
+              eyebrow="Shared itinerary"
+            />
             <ItineraryDetail it={state.it} />
           </>
         )}

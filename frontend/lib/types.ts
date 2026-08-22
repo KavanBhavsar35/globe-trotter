@@ -22,6 +22,8 @@ export type Trip = {
   is_public: boolean;
   share_token?: string | null;
   stop_count?: number; // added by GET /trips
+  budget_total?: number; // added by GET /trips (naive heuristic)
+  cover_url?: string; // presigned GET URL, "" if no cover
 };
 
 export type City = {
@@ -29,6 +31,8 @@ export type City = {
   name: string;
   country: string;
   cost_index: number;
+  popularity: number; // 0–100 score
+  img_url: string; // "" → picsum fallback
 };
 
 export type Activity = {
@@ -38,6 +42,8 @@ export type Activity = {
   type: string;
   cost: number;
   duration_hours: number;
+  description: string;
+  img_url: string; // "" → picsum fallback
 };
 
 export type StopActivity = {
