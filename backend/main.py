@@ -125,8 +125,8 @@ def build_itinerary(trip: Trip, session: Session) -> dict:
                 "type": a.type, "cost": a.cost, "duration_hours": a.duration_hours,
             })
         stay = nights * city.cost_index
-        meals = nights * 30
-        transport = 100
+        meals = nights * 2500  # ₹2,500 per night for meals
+        transport = 8400  # ₹8,400 per stop for transport
         cat["stay"] += stay
         cat["meals"] += meals
         cat["transport"] += transport
