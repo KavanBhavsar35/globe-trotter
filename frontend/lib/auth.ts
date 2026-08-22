@@ -24,6 +24,25 @@ export async function signup(email: string, password: string) {
   setSession(r.token, r.email);
 }
 
+/** Request a password-reset link. Always resolves (never reveals if the email exists). */
+export async function forgotPassword(email: string): Promise<string> {
+  const r = await apiFetch<{ ok: boolean; message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+    auth: false,
+  });
+  return r.message;
+}
+
+/** Set a new password using a reset token from the emailed link. */
+export async function resetPassword(token: string, password: string) {
+  await apiFetch("/auth/reset-password", {
+    method: "POST",
+    body: { token, password },
+    auth: false,
+  });
+}
+
 /** Guard hook for pages under (app). Returns true once the token is validated. */
 export function useRequireAuth(): boolean {
   const router = useRouter();

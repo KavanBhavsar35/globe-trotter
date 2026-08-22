@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { login, signup } from "@/lib/auth";
@@ -76,6 +77,14 @@ export default function LoginPage() {
                 autoComplete={tab === "login" ? "current-password" : "new-password"}
               />
             </div>
+            {tab === "login" && (
+              <Link
+                href="/forgot-password"
+                className="-mt-1 self-end text-sm text-muted-foreground hover:text-foreground"
+              >
+                Forgot password?
+              </Link>
+            )}
             <Button type="submit" disabled={loading} className="mt-1 w-full">
               {loading ? "Please wait…" : tab === "login" ? "Log in" : "Create account"}
             </Button>
